@@ -1,0 +1,3 @@
+/home/ysl123456/mymuduo/build/CMakeFiles/rebuild_cache.dir
+/home/ysl123456/mymuduo/build/CMakeFiles/edit_cache.dir
+/home/ysl123456/mymuduo/build/CMakeFiles/mymuduo.dir
