@@ -28,15 +28,21 @@ void Socket::listen()
         LOG_FATAL("listen sockfd:%d fail \n", sockfd_);
     }
 }
-int Socket::accept(InetAddress *peerAddr)
+int Socket::accept(InetAddress *peeraddr)
 {
+    /**
+     * 1. accept函数的参数不合法
+     * 2. 对返回的connfd没有设置非阻塞
+     * Reactor模型 one loop per thread
+     * poller + non-blocking IO
+     */ 
     sockaddr_in addr;
-    socklen_t len;
+    socklen_t len = sizeof addr;
     bzero(&addr, sizeof addr);
-    int connfd = ::accept(sockfd_, (sockaddr *)&addr, &len);//得到所谓的clientfd 和client的addr
+    int connfd = ::accept4(sockfd_, (sockaddr*)&addr, &len, SOCK_NONBLOCK | SOCK_CLOEXEC);
     if (connfd >= 0)
     {
-        peerAddr->setSockAddr(addr);//存进去的只是所谓的connfd的addr
+        peeraddr->setSockAddr(addr);
     }
     return connfd;
 }
