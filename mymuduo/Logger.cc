@@ -1,40 +1,60 @@
 #include "Logger.h"
-#include "Timestamp.h"
-// 获取日志唯一的实例对象
-Logger &Logger::instance()
+#include <time.h>
+#include <iostream>
+#include <thread>
+
+// 1. 修改点：函数名 instance -> GetInstance
+Logger &Logger::GetInstance()
 {
     static Logger logger;
     return logger;
 }
 
-// 设置日志级别
-void Logger::setLogLevel(int level)
+Logger::Logger()
 {
-    logLevel_ = level;
+    // 启动专门的写日志线程
+    std::thread writeLogTask([&]() {
+        for (;;)
+        {
+            // 1. 从队列中获取一条日志
+            std::string msg = m_lckQue.Pop(); 
+
+            // 2. 获取时间
+            time_t now = time(nullptr);
+            tm *nowtm = localtime(&now);
+
+            char file_name[128];
+            sprintf(file_name, "%d-%d-%d-log.txt", nowtm->tm_year + 1900, nowtm->tm_mon + 1, nowtm->tm_mday);
+
+            // 3. 写入文件
+            FILE *pf = fopen(file_name, "a+");
+            if (pf != nullptr)
+            {
+                char time_buf[128] = {0};
+                // 这里直接格式化时间即可，[INFO]标签已经在宏里加过了
+                sprintf(time_buf, "%02d:%02d:%02d => ", 
+                        nowtm->tm_hour, nowtm->tm_min, nowtm->tm_sec);
+                
+                msg.insert(0, time_buf);
+                msg.append("\n");
+                
+                fputs(msg.c_str(), pf);
+                fclose(pf); 
+            }
+        }
+    });
+
+    writeLogTask.detach();
 }
 
-// 写日志 级别信息 time:msg
-void Logger::log(std::string msg)
+// 2. 修改点：函数名 setLogLevel -> SetLogLevel，参数 int -> LogLevel
+void Logger::SetLogLevel(LogLevel level)
 {
-    switch (logLevel_)
-    {
-
-        case INFO:
-            std::cout << "[INFO]";
-            break;
-        case ERROR:
-            std::cout << "[ERROR]";
-            break;
-        case FATAL:
-            std::cout << "[FATAL]";
-            break;
-        case DEBUG:
-            std::cout << "[DEBUG]";
-            break;
-        default:
-            break;    
-    }
-    //打印事件和msg
-    std::cout << Timestamp::now().toString()<<" : " << msg << std::endl;
+    m_loglevel = level;
 }
 
+// 3. 修改点：函数名 log -> Log
+void Logger::Log(std::string msg)
+{
+    m_lckQue.Push(msg);
+}
